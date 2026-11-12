@@ -1,0 +1,33 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      # each script's self-checks are top-level asserts; running it as a non-__main__ module skips the interactive part
+      - name: Run self-checks
+        run: |
+          fail=0
+          for f in $(git ls-files '*.py'); do
+            (cd "$(dirname "$f")" && python -c "import runpy, sys; sys.path.insert(0, '.'); runpy.run_path(sys.argv[1])" "$(basename "$f")" < /dev/null) \
+              || { echo "::error file=$f::self-check failed"; fail=1; }
+          done
+          exit $fail
+
+      - name: Unit tests
+        working-directory: 014-Tkinter-Advanced/002
+        run: python -m unittest -v
